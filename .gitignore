@@ -1,0 +1,11 @@
+# Vendor data (Bloomberg, S&P Capital IQ, FactSet): licensed, never publish
+data/vendor/
+# Generated files that contain vendor prices or index levels
+data/clean/
+out/
+# Large StatCan downloads (over GitHub's 100 MB limit) - re-download, see README
+data/18100004_full.csv
+data/18100007_weights.csv
+__pycache__/
+.DS_Store
+.ipynb_checkpoints/
