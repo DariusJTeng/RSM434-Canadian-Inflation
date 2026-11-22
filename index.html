@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Replicating Canadian Inflation — CPI Hedge Monitor</title>
+<meta name="description" content="Can a pension hedge Canadian CPI without Real Return Bonds? Out-of-sample tests of RRB and proxy hedges, 2004–2026.">
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #fcfcfb; --panel: #ffffff; --line: #e6e5e1; --text: #0b0b0b; --muted: #52514e; --faint: #8a8984;
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+    --ok: #0f7b3d; --warn: #a86b00; --bad: #c22e2d; --grid: #eeede9; --axis: #c9c8c2;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bg: #1a1a19; --panel: #222220; --line: #3a3936; --text: #f0efec; --muted: #c3c2b7; --faint: #8d8c85;
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+      --ok: #4cc27f; --warn: #e2a33a; --bad: #e66767; --grid: #2c2b29; --axis: #55544f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 var(--sans); }
+  main { max-width: 1080px; margin: 0 auto; padding: 48px 24px 80px; }
+  .eyebrow { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  h1 { font: 400 clamp(32px, 5vw, 46px)/1.1 var(--serif); margin: 0 0 16px; }
+  h2 { font: 400 26px/1.2 var(--serif); margin: 56px 0 8px; padding-top: 24px; border-top: 1px solid var(--line); }
+  h3 { font-size: 16px; font-weight: 600; margin: 24px 0 4px; }
+  p { margin: 0 0 12px; max-width: 74ch; }
+  .lede { font-size: 19px; max-width: 70ch; }
+  .lede b, p b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.t, th.t { text-align: left; white-space: normal; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 28px 0 8px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+  .tile .k { font-size: 13px; color: var(--muted); }
+  .tile .v { font: 400 30px/1.2 var(--serif); font-variant-numeric: tabular-nums; margin-top: 4px; }
+  .tile .s { font-size: 12px; color: var(--faint); margin-top: 2px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); margin: 8px 0 4px; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .sw { width: 16px; height: 3px; border-radius: 2px; display: inline-block; }
+  .chart { position: relative; width: 100%; min-height: 260px; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 32px; }
+  .tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+         box-shadow: 0 6px 20px rgba(0,0,0,.12); padding: 8px 10px; font-size: 12.5px; white-space: nowrap; z-index: 5; display: none; }
+  .tip .d { color: var(--muted); margin-bottom: 4px; }
+  .tip div { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+  .axis text { fill: var(--muted); font-size: 12px; font-family: var(--sans); }
+  .axis path, .axis line { stroke: var(--axis); }
+  .grid line { stroke: var(--grid); } .grid path { display: none; }
+  .tablewrap { overflow-x: auto; margin-top: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-weight: 600; color: var(--muted); font-size: 12.5px; vertical-align: bottom; white-space: normal; }
+  tr.hl td { font-weight: 600; }
+  .pass { color: var(--ok); } .fail { color: var(--bad); } .weak { color: var(--warn); }
+  .bar { display: flex; height: 34px; border-radius: 8px; overflow: hidden; margin: 14px 0 6px; }
+  .bar div { border-right: 2px solid var(--bg); }
+  figure { margin: 20px 0; } figure img { width: 100%; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+  figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  details { margin-top: 12px; } summary { cursor: pointer; font-weight: 600; }
+  ul { padding-left: 20px; } li { margin-bottom: 6px; max-width: 80ch; }
+  footer { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+  a { color: var(--s1); }
+  .err { color: var(--bad); font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">RSM434 · Industry Project 6 · Replicating Canadian Inflation</div>
+  <h1>Can you hedge Canadian CPI without Real Return Bonds?</h1>
+  <p class="lede" id="lede">Loading…</p>
+  <p class="muted" id="asof"></p>
+
+  <div class="tiles">
+    <div class="tile"><div class="k">Liability value today</div><div class="v" id="k-liab">—</div><div class="s" id="k-liab-s"></div></div>
+    <div class="tile"><div class="k">RRB hedge: gap at end</div><div class="v" id="k-rrb">—</div><div class="s">Duration-matched RRBs</div></div>
+    <div class="tile"><div class="k">Best proxy: gap at end</div><div class="v" id="k-proxy">—</div><div class="s">Nominal GoC + US TIPS</div></div>
+    <div class="tile"><div class="k">Cost of losing RRBs</div><div class="v" id="k-cost">—</div><div class="s">On this $100M liability</div></div>
+    <div class="tile"><div class="k">CPI basket with a working proxy</div><div class="v" id="k-hedge">—</div><div class="s" id="k-hedge-s"></div></div>
+  </div>
+
+  <h2 id="liability">The liability and the hedges</h2>
+  <p>The client owes a single payment in 10 years of <b>$100M × CPI growth</b>, starting 31 Dec 2017, valued every month at the long RRB real yield. Each hedge starts at the liability's value and is fully funded. Proxy weights were set on 2004–2017 data only, so everything shown from 2018 is out of sample.</p>
+  <div class="legend" id="legend-main"></div>
+  <div class="chart" id="c-value"></div>
+
+  <div class="two">
+    <div>
+      <h3>Hedge minus liability ($M)</h3>
+      <p class="muted">Above zero, the hedge is ahead of what is owed.</p>
+      <div class="chart" id="c-gap"></div>
+    </div>
+    <div>
+      <h3>Rolling 12-month tracking error (% a year)</h3>
+      <p class="muted">Volatility of the monthly hedge return minus the liability return.</p>
+      <div class="chart" id="c-te"></div>
+    </div>
+  </div>
+
+  <h3>Scorecard, Dec 2017 to Oct 2026</h3>
+  <div class="tablewrap"><table id="t-summary">
+    <thead><tr><th>Hedge</th><th>Tracking error, % a year</th><th>Tracking error, $M a year</th><th>TE 2021–22, %</th><th>Worst month, $M</th><th>Gap at end, $M</th><th>Gap at end, % of liability</th></tr></thead>
+    <tbody></tbody></table></div>
+  <p class="muted" style="margin-top:10px">No hedge wins on both measures. Because the liability is discounted at the <i>long</i> real yield, matching the long end (longest RRB + cash) gives the lowest monthly tracking error, while staying fully CPI-linked (duration-matched RRBs) gives the smallest end gap.</p>
+
+  <h2 id="rolling">Does the answer depend on the start date?</h2>
+  <p id="rolling-text">Loading…</p>
+  <div class="legend" id="legend-rolling"></div>
+  <div class="chart" id="c-rolling"></div>
+  <p class="muted">Gap at the end of each 5-year window, % of the liability, by start month. Proxy weights are re-estimated using only data available at each start. Windows overlap, so there are only two or three independent periods.</p>
+
+  <h2 id="drivers">What drives Canadian CPI?</h2>
+  <p>Energy causes most of the month-to-month noise; shelter and food make up most of the level. The table splits headline CPI by component (2025 basket weights, 2004–2026).</p>
+  <div class="tablewrap"><table id="t-drivers">
+    <thead><tr><th>Component</th><th>Basket weight, %</th><th>Volatility, % a year</th><th>Share of monthly variance, %</th><th>Share of cumulative inflation, %</th><th>Share of 2021–23 inflation, %</th></tr></thead>
+    <tbody></tbody></table></div>
+  <figure>
+    <img src="img/fig2_strong_vs_weak.png" alt="Scatter plots: gasoline CPI against oil (clear relationship) and food CPI against food commodities (no relationship)">
+    <figcaption>Gasoline follows oil; food does not follow food commodities, even with six months of lags.</figcaption>
+  </figure>
+
+  <h2 id="basket">How much of the CPI basket can be hedged?</h2>
+  <p>Each CPI piece was tested against its best tradable proxy (lags 0–6, 0–12 for shelter, month dummies), estimated on 2004–2017 and tested on 2018–2026. A piece counts only if the link survives out of sample.</p>
+  <div class="bar" id="bar" role="img" aria-label="Share of the 2025 CPI basket by hedgeability"></div>
+  <div class="legend" id="legend-bar"></div>
+  <div class="tablewrap"><table id="t-basket">
+    <thead><tr><th>Group</th><th class="t">Items and proxy</th><th>Basket weight, %</th></tr></thead><tbody></tbody></table></div>
+
+  <div>
+    <div>
+      <h3>Proxy tests, piece by piece</h3>
+      <p class="muted">Share of each piece's monthly movement the proxy explains, beyond seasonality.</p>
+      <div class="tablewrap"><table id="t-tests">
+        <thead><tr><th>CPI piece</th><th class="t">Proxy</th><th>R² in-sample</th><th>R² out of sample</th><th class="t">Verdict</th></tr></thead><tbody></tbody></table></div>
+      <p class="muted" style="margin-top:8px">Mortgage interest cost barely moves with rates month to month, but its 12-month change correlates 0.74 with the 5-year GoC yield change a year earlier.</p>
+    </div>
+    <div>
+      <h3>Proxy hedge weights (% of liability)</h3>
+      <p class="muted">Minimise 2004–2017 tracking error, fully funded; only nominal GoC may be shorted. Rate positions shrink as the liability's duration falls.</p>
+      <div class="tablewrap"><table id="t-weights">
+        <thead><tr><th>Asset</th><th>Rates + commodities</th><th>Rates only</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <h2 id="method">Method, data and caveats</h2>
+  <details open>
+    <summary>Method</summary>
+    <ul>
+      <li><b>Liability:</b> $100M × CPI<sub>T</sub>/CPI<sub>0</sub> paid 10 years after the start, discounted at the Bank of Canada long RRB real yield (semi-annual). CPI enters with its publication lag: at each month-end only the previous month's CPI is known.</li>
+      <li><b>RRB benchmark:</b> each month, the two RRBs whose durations bracket the liability's duration, weighted to match its value and duration. Variants hold the longest RRB plus T-bills, or the longest and shortest RRBs.</li>
+      <li><b>Proxy hedge:</b> weights minimise the volatility of monthly hedge-minus-liability returns on 2004–2017 data for a constant 10-year liability. Out of sample, rate positions are scaled by the liability's duration ÷ 10 and the rest is held in T-bills.</li>
+      <li><b>Index ratio:</b> RRB reference CPI is the CPI three months back, interpolated through the month.</li>
+    </ul>
+  </details>
+  <details>
+    <summary>Data</summary>
+    <ul>
+      <li>Statistics Canada tables 18-10-0004-01 (CPI, monthly, not seasonally adjusted) and 18-10-0007-01 (basket weights).</li>
+      <li>Bank of Canada selected bond yields (2, 5, 10-year, long nominal and long RRB real yield).</li>
+      <li>Bloomberg: month-end prices for the eight remaining RRBs (from Oct 2015; 2050 from 2017; 2054 from 2021), BCOM total return sub-indices in CAD, US TIPS total return index, Canada 3-month T-bill.</li>
+      <li>S&amp;P Capital IQ: S&amp;P/TSX Capped Real Estate and Energy total return.</li>
+      <li>FRED: US CPI, 10-year TIPS yield and breakeven, USD/CAD, WTI, US 3-month T-bill, IMF food price index.</li>
+      <li>Vendor data are not redistributed here; this page shows only derived results. Data downloaded 20 Nov 2026; monthly analysis to 31 Oct 2026.</li>
+    </ul>
+  </details>
+  <details>
+    <summary>Caveats</summary>
+    <ul>
+      <li>RRB prices before Oct 2015 (used only in the start-date test) are modelled from the nominal curve and a flat breakeven; checked against Bloomberg on the overlap (monthly price-change correlation 0.83–0.99).</li>
+      <li>The commodity sleeve's smaller end gap is largely the return premium of commodities and equities over cash, not better tracking of CPI: it raises monthly tracking error and lost up to 3.2 points of the liability for starts before the 2015 oil collapse.</li>
+      <li>The hedgeable share counts basket weight only. Even gasoline, the best case, is only about half explained month to month out of sample.</li>
+      <li>12-month correlations use overlapping windows, so they rest on roughly 20 independent years.</li>
+    </ul>
+  </details>
+
+  <footer>
+    Darius Jonathan Teng · Rotman Commerce, University of Toronto · <a href="https://dariusteng.org">dariusteng.org</a><br>
+    Built for RSM434 Industry Project 6 with CIBC. Not investment advice.
+  </footer>
+</main>
+
+<script>
+const fmtM = (v) => v == null ? '—' : (v < 0 ? '−$' : '$') + d3.format(',.1f')(Math.abs(v)) + 'M';
+const fmtN = (v, dp = 2) => v == null ? '—' : (v < 0 ? '−' : '') + d3.format(`,.${dp}f`)(Math.abs(v));
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const parse = d3.utcParse('%Y-%m-%d');
+const SERIES = [
+  { key: 'liability', label: 'Liability', color: '--text', width: 2.6 },
+  { key: 'rrb', label: 'RRB, duration-matched', color: '--s1' },
+  { key: 'proxy_rates', label: 'Proxy: rates only', color: '--s2' },
+  { key: 'proxy_commod', label: 'Proxy: rates + commodities', color: '--s3' },
+  { key: 'cash', label: 'Cash only', color: '--s4' },
+];
+
+function legend(id, series) {
+  const el = document.getElementById(id); el.replaceChildren();
+  series.forEach((s) => { const sp = document.createElement('span'); const i = document.createElement('i');
+    i.className = 'sw'; i.style.background = css(s.color); sp.append(i, s.label); el.append(sp); });
+}
+
+function lineChart(el, rows, xKey, series, o = {}) {
+  el.replaceChildren();
+  const W = Math.max(300, el.clientWidth), H = o.height || 260;
+  const data = rows.map((r) => ({ x: parse(r[xKey]), r })).filter((d) => d.x);
+  const vals = []; series.forEach((s) => data.forEach((d) => { if (d.r[s.key] != null) vals.push(+d.r[s.key]); }));
+  if (o.zero) vals.push(0);
+  const m = { t: 10, r: 12, b: 28, l: 40 };
+  const y = d3.scaleLinear().domain(d3.extent(vals)).nice().range([H - m.b, m.t]);
+  const svg = d3.select(el).append('svg').attr('width', W).attr('height', H).attr('role', 'img').attr('aria-label', o.aria || '');
+  const gy = svg.append('g').attr('class', 'axis').call(d3.axisLeft(y).ticks(5).tickFormat(o.yFmt || d3.format(',')));
+  let mw = 0; gy.selectAll('text').each(function () { mw = Math.max(mw, this.getComputedTextLength()); });
+  m.l = Math.ceil(mw) + 14; gy.attr('transform', `translate(${m.l},0)`);
+  const x = d3.scaleUtc().domain(d3.extent(data, (d) => d.x)).range([m.l, W - m.r]);
+  svg.insert('g', ':first-child').attr('class', 'grid').attr('transform', `translate(${m.l},0)`)
+    .call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat(''));
+  svg.append('g').attr('class', 'axis').attr('transform', `translate(0,${H - m.b})`)
+    .call(d3.axisBottom(x).ticks(Math.max(2, Math.floor((W - m.l) / 80))).tickFormat(d3.utcFormat('%Y')));
+  if (o.zero) svg.append('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', y(0)).attr('y2', y(0))
+    .attr('stroke', css('--faint')).attr('stroke-dasharray', '3 3');
+  series.forEach((s) => svg.append('path').datum(data).attr('fill', 'none').attr('stroke', css(s.color))
+    .attr('stroke-width', s.width || 1.8).attr('stroke-linejoin', 'round')
+    .attr('d', d3.line().defined((d) => d.r[s.key] != null).x((d) => x(d.x)).y((d) => y(+d.r[s.key]))));
+  const tip = d3.select(el).append('div').attr('class', 'tip');
+  const rule = svg.append('line').attr('y1', m.t).attr('y2', H - m.b).attr('stroke', css('--faint')).style('display', 'none');
+  const dots = svg.append('g');
+  const bis = d3.bisector((d) => d.x).center, tf = d3.utcFormat(o.tipDate || '%b %Y');
+  svg.append('rect').attr('x', m.l).attr('y', m.t).attr('width', W - m.l - m.r).attr('height', H - m.t - m.b)
+    .attr('fill', 'transparent').style('touch-action', 'pan-y')
+    .on('pointermove', (ev) => {
+      const d = data[bis(data, x.invert(d3.pointer(ev)[0]))]; if (!d) return;
+      rule.attr('x1', x(d.x)).attr('x2', x(d.x)).style('display', null);
+      dots.selectAll('circle').data(series.filter((s) => d.r[s.key] != null)).join('circle').attr('r', 4)
+        .attr('cx', x(d.x)).attr('cy', (s) => y(+d.r[s.key])).attr('fill', (s) => css(s.color))
+        .attr('stroke', css('--bg')).attr('stroke-width', 2);
+      tip.style('display', 'block').html('');
+      tip.append('div').attr('class', 'd').text(tf(d.x));
+      series.forEach((s) => { const row = tip.append('div');
+        row.append('i').attr('class', 'sw').style('background', css(s.color));
+        row.append('span').text(`${s.label}: ${(o.tipFmt || String)(d.r[s.key])}`); });
+      const tw = tip.node().offsetWidth; const px = x(d.x);
+      tip.style('left', `${px + 14 + tw > W ? px - tw - 14 : px + 14}px`).style('top', `${m.t}px`);
+    })
+    .on('pointerleave', () => { tip.style('display', 'none'); rule.style('display', 'none'); dots.selectAll('*').remove(); });
+}
+
+function fillTable(id, rows, cols, rowClass) {
+  const tb = document.querySelector(`#${id} tbody`); tb.replaceChildren();
+  rows.forEach((r) => { const tr = tb.insertRow(); if (rowClass) tr.className = rowClass(r) || '';
+    cols.forEach(([f, fmt, cls]) => { const td = tr.insertCell(); td.textContent = fmt ? fmt(r[f]) : r[f];
+      if (cls) td.className = cls(r[f]) || ''; }); });
+}
+
+const names = ['headline', 'paths', 'summary', 'rolling', 'weights', 'drivers', 'basket', 'proxytests'];
+Promise.all(names.map((n) => fetch(`data/${n}.json`).then((r) => { if (!r.ok) throw new Error(n); return r.json(); })))
+  .then((arr) => { const D = Object.fromEntries(names.map((n, i) => [n, arr[i]])); render(D);
+    let w = window.innerWidth; new ResizeObserver(() => { if (Math.abs(window.innerWidth - w) > 20) { w = window.innerWidth; drawCharts(D); } })
+      .observe(document.body);
+    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => render(D)); })
+  .catch((e) => { document.getElementById('lede').innerHTML = '<span class="err">Could not load the data files. If you opened this page from your disk, run <code>python -m http.server</code> in the docs folder and open http://localhost:8000.</span>'; console.error(e); });
+
+function drawCharts(D) {
+  lineChart(document.getElementById('c-value'), D.paths, 'date', SERIES,
+    { height: 320, yFmt: d3.format(',.0f'), tipFmt: fmtM, aria: 'Liability and hedge values, $M' });
+  lineChart(document.getElementById('c-gap'), D.paths, 'date', SERIES.slice(1).map((s) => ({ ...s, key: 'gap_' + s.key })),
+    { zero: true, yFmt: d3.format(',.0f'), tipFmt: fmtM, aria: 'Hedge minus liability, $M' });
+  lineChart(document.getElementById('c-te'), D.paths.filter((r) => r.te12_rrb != null), 'date',
+    SERIES.slice(1).map((s) => ({ ...s, key: 'te12_' + s.key })), { yFmt: d3.format('.0f'), tipFmt: (v) => fmtN(v, 1) + '%', aria: 'Rolling 12-month tracking error' });
+  lineChart(document.getElementById('c-rolling'), D.rolling, 'start', SERIES.slice(1),
+    { zero: true, height: 300, yFmt: d3.format('.0f'), tipFmt: (v) => fmtN(v) + '%', tipDate: 'Start %b %Y', aria: 'End gap by start month' });
+}
+
+function render(D) {
+  const h = D.headline, R = h.rolling, mon = (s) => d3.utcFormat('%b %Y')(d3.utcParse('%Y-%m')(s));
+  document.getElementById('lede').innerHTML =
+    `Without RRBs, the best rates-only proxy hedge ends <b>${fmtM(h.proxy_rates_shortfall_musd)}</b> against the liability, versus <b>${fmtM(h.rrb_shortfall_musd)}</b> for duration-matched RRBs: losing RRBs costs about <b>${fmtM(h.cost_of_losing_rrbs_musd)}</b> per $100M of liability over nine years. Only <b>${fmtN(h.hedgeable_now_pct, 1)}%</b> of the CPI basket has a tradable proxy that holds up out of sample.`;
+  document.getElementById('asof').textContent = `Monthly data to ${d3.utcFormat('%-d %b %Y')(parse(h.as_of))} (downloaded ${d3.utcFormat('%-d %b %Y')(parse(h.downloaded))}). Static snapshot.`;
+  document.getElementById('k-liab').textContent = fmtM(h.liability_musd);
+  document.getElementById('k-liab-s').textContent = `Up from ${fmtM(h.liability_start_musd)} in Dec 2017`;
+  document.getElementById('k-rrb').textContent = fmtM(h.rrb_shortfall_musd);
+  document.getElementById('k-proxy').textContent = fmtM(h.proxy_rates_shortfall_musd);
+  document.getElementById('k-cost').textContent = fmtM(h.cost_of_losing_rrbs_musd);
+  document.getElementById('k-hedge').textContent = fmtN(h.hedgeable_now_pct, 1) + '%';
+  document.getElementById('k-hedge-s').textContent = `${fmtN(h.hedgeable_incl_rates_pct, 1)}% incl. mortgage interest via rates`;
+  document.getElementById('rolling-text').innerHTML =
+    `Across ${h.rolling_windows} start months (${mon(h.rolling_first)} to ${mon(h.rolling_last)}), each held 5 years, RRBs ended on average at <b>${fmtN(R.rrb.mean)}%</b> of the liability, the rates-only proxy at <b>${fmtN(R.proxy_rates.mean)}%</b> and cash at <b>${fmtN(R.cash.mean)}%</b>. Adding commodities and equities improved the end gap in <b>${fmtN(h.sleeve_helped_pct, 0)}%</b> of windows (best <b>+${fmtN(h.sleeve_best_pct)}</b> points from ${mon(h.sleeve_best_start)}), but cost <b>${fmtN(h.sleeve_worst_pct)}</b> points for a start in ${mon(h.sleeve_worst_start)}, as oil collapsed, and raised tracking error from ${fmtN(R.proxy_rates.te, 1)}% to ${fmtN(R.proxy_commod.te, 1)}%.`;
+  legend('legend-main', SERIES); legend('legend-rolling', SERIES.slice(1));
+  drawCharts(D);
+  fillTable('t-summary', D.summary, [['hedge'], ['te_pct', fmtN], ['te_musd', fmtN], ['te_2021_22', fmtN], ['worst_month_musd', fmtN], ['shortfall_musd', fmtN], ['shortfall_pct', fmtN]],
+    (r) => ['rrb', 'proxy_rates'].includes(r.key) ? 'hl' : '');
+  const comp = { food: 'Food', shelter: 'Shelter', household: 'Household operations', clothing: 'Clothing and footwear', transport: 'Transportation (incl. gasoline)',
+    health: 'Health and personal care', recreation: 'Recreation, education', alc_tob: 'Alcohol, tobacco, cannabis' };
+  fillTable('t-drivers', D.drivers.map((r) => ({ ...r, component: comp[r.component] || r.component })),
+    [['component'], ['weight_pct', (v) => fmtN(v, 1)], ['vol_pct', (v) => fmtN(v, 1)], ['var_share_pct', (v) => fmtN(v, 1)], ['cum_share_pct', (v) => fmtN(v, 1)], ['cum_share_2123_pct', (v) => fmtN(v, 1)]]);
+  const bc = ['--ok', '--s1', '--warn', '--axis'];
+  const bar = document.getElementById('bar'); bar.replaceChildren();
+  D.basket.forEach((r, i) => { const d = document.createElement('div'); d.style.width = r.weight_pct + '%'; d.style.background = css(bc[i]);
+    d.title = `${r.group}: ${fmtN(r.weight_pct, 1)}%`; bar.append(d); });
+  legend('legend-bar', D.basket.map((r, i) => ({ label: `${r.group} (${fmtN(r.weight_pct, 1)}%)`, color: bc[i] })));
+  fillTable('t-basket', D.basket, [['group'], ['detail', null, () => 't'], ['weight_pct', fmtN]]);
+  fillTable('t-tests', D.proxytests, [['piece'], ['proxy', null, () => 't'], ['r2_in', fmtN], ['r2_oos', fmtN],
+    ['verdict', null, (v) => 't ' + (v.startsWith('Pass') ? 'pass' : v === 'Weak' ? 'weak' : 'fail')]]);
+  fillTable('t-weights', D.weights, [['asset'], ['rates_commod_pct', (v) => fmtN(v, 1)], ['rates_only_pct', (v) => fmtN(v, 1)]]);
+}
+</script>
+</body>
+</html>

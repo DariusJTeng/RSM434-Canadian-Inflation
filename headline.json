@@ -1,0 +1,46 @@
+{
+ "as_of": "2026-10-31",
+ "downloaded": "2026-11-20",
+ "liability_musd": 126.71,
+ "liability_start_musd": 94.47,
+ "rrb_shortfall_musd": -1.15,
+ "proxy_rates_shortfall_musd": -11.52,
+ "proxy_commod_shortfall_musd": -2.1,
+ "cost_of_losing_rrbs_musd": 10.37,
+ "hedgeable_now_pct": 4.25,
+ "hedgeable_incl_rates_pct": 9.46,
+ "rolling": {
+  "cash": {
+   "mean": -6.96,
+   "worst": -19.41,
+   "best": 8.42,
+   "te": 4.09
+  },
+  "proxy_rates": {
+   "mean": -4.09,
+   "worst": -8.63,
+   "best": 0.89,
+   "te": 2.37
+  },
+  "proxy_commod": {
+   "mean": -2.02,
+   "worst": -5.42,
+   "best": 1.24,
+   "te": 2.45
+  },
+  "rrb": {
+   "mean": -0.42,
+   "worst": -4.68,
+   "best": 6.13,
+   "te": 3.01
+  }
+ },
+ "rolling_windows": 151,
+ "rolling_first": "2009-04",
+ "rolling_last": "2021-10",
+ "sleeve_helped_pct": 91.0,
+ "sleeve_worst_pct": -3.23,
+ "sleeve_worst_start": "2015-03",
+ "sleeve_best_pct": 5.14,
+ "sleeve_best_start": "2020-03"
+}
