@@ -131,10 +131,19 @@
   <div class="tablewrap"><table id="t-drivers">
     <thead><tr><th>Component</th><th>Basket weight, %</th><th>Volatility, % a year</th><th>Share of monthly variance, %</th><th>Share of cumulative inflation, %</th><th>Share of 2021–23 inflation, %</th></tr></thead>
     <tbody></tbody></table></div>
-  <figure>
-    <img src="fig2_strong_vs_weak.png" alt="Scatter plots: gasoline CPI against oil (clear relationship) and food CPI against food commodities (no relationship)">
-    <figcaption>Gasoline follows oil; food does not follow food commodities, even with six months of lags.</figcaption>
-  </figure>
+  <div class="two" style="margin-top:20px">
+    <div>
+      <h3>Gasoline CPI follows oil</h3>
+      <p class="muted" id="sc-gas-note">Monthly change in gasoline CPI (de-seasonalised) against oil (WTI, in CAD) over the same and previous month.</p>
+      <div class="chart" id="c-sc-gas"></div>
+    </div>
+    <div>
+      <h3>Food CPI doesn't follow food commodities</h3>
+      <p class="muted" id="sc-food-note">Monthly change in food CPI (de-seasonalised) against food commodities (IMF index, in CAD) over the last six months.</p>
+      <div class="chart" id="c-sc-food"></div>
+    </div>
+  </div>
+  <p class="muted">Each dot is one month, 2004–2026; the line is the least-squares fit. Hover a dot to see its month.</p>
 
   <h2 id="basket">How much of the CPI basket can be hedged?</h2>
   <p>Each CPI piece was tested against its best tradable proxy (lags 0–6, 0–12 for shelter, month dummies), estimated on 2004–2017 and tested on 2018–2026. A piece counts only if the link survives out of sample.</p>
@@ -407,6 +416,56 @@ function histChart(el, edges, groups, counts) {
     .on('pointerleave', () => { tip.style('display', 'none'); band.style('display', 'none'); });
 }
 
+function scatterChart(el, S, o) {
+  el.replaceChildren();
+  const W = Math.max(300, el.clientWidth), H = 300, m = { t: 12, r: 14, b: 44, l: 44 };
+  const pts = S.points;
+  const x = d3.scaleLinear().domain(d3.extent(pts, (d) => d.x)).nice();
+  const y = d3.scaleLinear().domain(d3.extent(pts, (d) => d.y)).nice().range([H - m.b, m.t]);
+  const svg = d3.select(el).append('svg').attr('width', W).attr('height', H).attr('role', 'img').attr('aria-label', o.aria);
+  const gy = svg.append('g').attr('class', 'axis').call(d3.axisLeft(y).ticks(6).tickFormat((v) => (v < 0 ? '−' : '') + Math.abs(v)));
+  let mw = 0; gy.selectAll('text').each(function () { mw = Math.max(mw, this.getComputedTextLength()); });
+  m.l = Math.ceil(mw) + 30; gy.attr('transform', `translate(${m.l},0)`);
+  x.range([m.l, W - m.r]);
+  svg.insert('g', ':first-child').attr('class', 'grid').attr('transform', `translate(${m.l},0)`)
+    .call(d3.axisLeft(y).ticks(6).tickSize(-(W - m.l - m.r)).tickFormat(''));
+  svg.insert('g', ':first-child').attr('class', 'grid').attr('transform', `translate(0,${H - m.b})`)
+    .call(d3.axisBottom(x).ticks(Math.max(3, Math.floor((W - m.l) / 70))).tickSize(-(H - m.t - m.b)).tickFormat(''));
+  svg.append('g').attr('class', 'axis').attr('transform', `translate(0,${H - m.b})`)
+    .call(d3.axisBottom(x).ticks(Math.max(3, Math.floor((W - m.l) / 70))).tickFormat((v) => (v < 0 ? '−' : '') + Math.abs(v)));
+  svg.append('text').attr('x', (m.l + W - m.r) / 2).attr('y', H - 6).attr('text-anchor', 'middle')
+    .attr('fill', css('--muted')).attr('font-size', 12).text(o.xLabel);
+  svg.append('text').attr('transform', `translate(12,${(m.t + H - m.b) / 2}) rotate(-90)`).attr('text-anchor', 'middle')
+    .attr('fill', css('--muted')).attr('font-size', 12).text(o.yLabel);
+  [[x(0), x(0), m.t, H - m.b], [m.l, W - m.r, y(0), y(0)]].forEach(([x1, x2, y1, y2]) =>
+    svg.append('line').attr('x1', x1).attr('x2', x2).attr('y1', y1).attr('y2', y2).attr('stroke', css('--axis')));
+  svg.append('g').selectAll('circle').data(pts).join('circle').attr('cx', (d) => x(d.x)).attr('cy', (d) => y(d.y))
+    .attr('r', 3.4).attr('fill', css('--s1')).attr('fill-opacity', 0.5);
+  const [x0, x1] = x.domain(), fy = (v) => S.intercept + S.slope * v;
+  const clip = (v) => Math.max(y.domain()[0], Math.min(y.domain()[1], v));
+  svg.append('line').attr('x1', x(x0)).attr('y1', y(clip(fy(x0)))).attr('x2', x(x1)).attr('y2', y(clip(fy(x1))))
+    .attr('stroke', css('--s2')).attr('stroke-width', 2.4);
+  svg.append('text').attr('x', m.l + 10).attr('y', m.t + 16).attr('fill', css('--text')).attr('font-size', 13).attr('font-weight', 600)
+    .text(`correlation ${fmtN(S.r)}  ·  ${S.n} months`);
+  const tip = d3.select(el).append('div').attr('class', 'tip');
+  const hi = svg.append('circle').attr('r', 6).attr('fill', 'none').attr('stroke', css('--text')).attr('stroke-width', 1.5).style('display', 'none');
+  const del = d3.Delaunay.from(pts, (d) => x(d.x), (d) => y(d.y)), tf = d3.utcFormat('%b %Y');
+  svg.append('rect').attr('x', m.l).attr('y', m.t).attr('width', W - m.l - m.r).attr('height', H - m.t - m.b)
+    .attr('fill', 'transparent').style('touch-action', 'pan-y')
+    .on('pointermove', (ev) => {
+      const [mx, my] = d3.pointer(ev), d = pts[del.find(mx, my)];
+      if (Math.hypot(x(d.x) - mx, y(d.y) - my) > 30) { tip.style('display', 'none'); hi.style('display', 'none'); return; }
+      hi.attr('cx', x(d.x)).attr('cy', y(d.y)).style('display', null);
+      tip.style('display', 'block').html('');
+      tip.append('div').attr('class', 'd').text(tf(parse(d.date)));
+      tip.append('div').append('span').text(`${o.xShort}: ${fmtN(d.x, 1)}%`);
+      tip.append('div').append('span').text(`${o.yShort}: ${fmtN(d.y, 2)}%`);
+      const tw = tip.node().offsetWidth, px = x(d.x);
+      tip.style('left', `${px + 14 + tw > W ? px - tw - 14 : px + 14}px`).style('top', `${Math.max(0, y(d.y) - 50)}px`);
+    })
+    .on('pointerleave', () => { tip.style('display', 'none'); hi.style('display', 'none'); });
+}
+
 function fillTable(id, rows, cols, rowClass) {
   const tb = document.querySelector(`#${id} tbody`); tb.replaceChildren();
   rows.forEach((r) => { const tr = tb.insertRow(); if (rowClass) tr.className = rowClass(r) || '';
@@ -414,7 +473,7 @@ function fillTable(id, rows, cols, rowClass) {
       if (cls) td.className = cls(r[f]) || ''; }); });
 }
 
-const names = ['headline', 'paths', 'summary', 'rolling', 'weights', 'drivers', 'basket', 'proxytests', 'breakeven', 'ticket', 'forecast', 'montecarlo'];
+const names = ['headline', 'paths', 'summary', 'rolling', 'weights', 'drivers', 'basket', 'proxytests', 'breakeven', 'ticket', 'forecast', 'montecarlo', 'scatter'];
 Promise.all(names.map((n) => fetch(`${n}.json`).then((r) => { if (!r.ok) throw new Error(n); return r.json(); })))
   .then((arr) => { const D = Object.fromEntries(names.map((n, i) => [n, arr[i]])); render(D);
     let w = window.innerWidth; new ResizeObserver(() => { if (Math.abs(window.innerWidth - w) > 20) { w = window.innerWidth; drawCharts(D); } })
@@ -443,6 +502,10 @@ function drawCharts(D) {
                  (r) => r.p5 != null ? `5th–95th pct: ${fmtN(r.p5)}% to ${fmtN(r.p95)}%` : null],
       aria: 'Actual and simulated 12-month CPI inflation' });
   histChart(document.getElementById('c-hist'), D.montecarlo.hist.edges, HIST, D.montecarlo.hist);
+  scatterChart(document.getElementById('c-sc-gas'), D.scatter.gasoline, { aria: 'Gasoline CPI against oil, monthly',
+    xLabel: 'Oil (WTI, CAD), same + previous month, %', yLabel: 'Gasoline CPI, monthly change, %', xShort: 'Oil', yShort: 'Gasoline CPI' });
+  scatterChart(document.getElementById('c-sc-food'), D.scatter.food, { aria: 'Food CPI against food commodities, monthly',
+    xLabel: 'Food commodities (CAD), last 6 months, %', yLabel: 'Food CPI, monthly change, %', xShort: 'Food commodities', yShort: 'Food CPI' });
 }
 
 function render(D) {
