@@ -121,7 +121,7 @@
     <thead><tr><th>Component</th><th>Basket weight, %</th><th>Volatility, % a year</th><th>Share of monthly variance, %</th><th>Share of cumulative inflation, %</th><th>Share of 2021–23 inflation, %</th></tr></thead>
     <tbody></tbody></table></div>
   <figure>
-    <img src="img/fig2_strong_vs_weak.png" alt="Scatter plots: gasoline CPI against oil (clear relationship) and food CPI against food commodities (no relationship)">
+    <img src="fig2_strong_vs_weak.png" alt="Scatter plots: gasoline CPI against oil (clear relationship) and food CPI against food commodities (no relationship)">
     <figcaption>Gasoline follows oil; food does not follow food commodities, even with six months of lags.</figcaption>
   </figure>
 
@@ -257,7 +257,7 @@ function fillTable(id, rows, cols, rowClass) {
 }
 
 const names = ['headline', 'paths', 'summary', 'rolling', 'weights', 'drivers', 'basket', 'proxytests'];
-Promise.all(names.map((n) => fetch(`data/${n}.json`).then((r) => { if (!r.ok) throw new Error(n); return r.json(); })))
+Promise.all(names.map((n) => fetch(`${n}.json`).then((r) => { if (!r.ok) throw new Error(n); return r.json(); })))
   .then((arr) => { const D = Object.fromEntries(names.map((n, i) => [n, arr[i]])); render(D);
     let w = window.innerWidth; new ResizeObserver(() => { if (Math.abs(window.innerWidth - w) > 20) { w = window.innerWidth; drawCharts(D); } })
       .observe(document.body);
